@@ -1,33 +1,44 @@
-import { REDIRECT_URI } from "@/utils/constants";
-import {} from "expo-auth-session";
-const AUTH_ENDPOINT = `http://www.strava.com/oauth/authorize`;
+import { CLIENT_ID, CLIENT_SECRET } from "@/constants/env-variables";
 
-export const login = async () => {
-  try {
-    const authUrl = `${AUTH_ENDPOINT}?client_id=${
-      process.env.PUBLIC_EXPO_CLIENT_ID
-    }&response_type=code&redirect_uri=${encodeURIComponent(
-      REDIRECT_URI
-    )}&approval_prompt=force&scope=read,activity:read_all`;
-    // 2. Abrir el navegador para la autenticación
-
-    if (result.type === "success") {
-      const { code } = result.params;
-
-      // 3. Intercambiar el código por tokens
-      const tokenResponse = await fetch(TOKEN_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&code=${code}&grant_type=authorization_code`,
-      });
-
-      const tokens = await tokenResponse.json();
-      console.log("Access Token:", tokens.access_token);
-
-      // Guarda los tokens para usarlos en la app
-      return tokens;
+export async function fetchActivities(accessToken: string) {
+  const response = await fetch(
+    "https://www.strava.com/api/v3/athlete/activities",
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     }
+  );
 
-    return null;
-  } catch (e) {}
-};
+  if (!response.ok) {
+    throw new Error("Error fetching activities");
+  }
+
+  return response.json();
+}
+
+export const TOKEN_ENDPOINT = "https://www.strava.com/oauth/token";
+
+export async function exchangeCode(code: string) {
+  try {
+    const res = await fetch(
+      `${TOKEN_ENDPOINT}?client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&code=${code}&grant_type=authorization_code`
+    );
+
+    if (!res.ok)
+      return {
+        ok: false,
+        response: null,
+      };
+
+    const data = await res.json();
+
+    return {
+      ok: true,
+      response: data,
+    };
+  } catch (err) {
+    console.log(err);
+    return { ok: false, response: null };
+  }
+}
